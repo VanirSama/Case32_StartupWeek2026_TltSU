@@ -1,0 +1,9 @@
+# Environment config
+# network_cidr            = "192.168.1.0/24"
+
+# Traffic config
+# bandwith                = 100 # Mbps
+# ttl                     = 64 # s
+
+# Router config
+# ttl                     = 300 # s
