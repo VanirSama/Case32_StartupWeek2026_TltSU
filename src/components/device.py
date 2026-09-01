@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from src.utils.utils import mac_to_str
+from src.utils.utils import mac_to_str, ip_to_str
 
 from abc import ABC, abstractmethod
 from ipaddress import IPv4Address
@@ -12,17 +12,18 @@ class Device(ABC):
     Класс-интерфейс для сетевых устройств.
 
     Attributes:
-        TYPE: тип устройства в байтовом представлении: b"0" (дефолтное значение), b"e" (Endpoint - конечная станция), b"R" (Router - марщрутизатор).
+        TYPE: тип устройства в байтовом представлении: b"0" (дефолтное значение), b"e" (Endpoint - конечная станция), b"R" (Router - маршрутизатор).
         _MAC: MAC-адрес устройства, случайное 48-битное число.
         _IP: IP-адрес устройства, задается классом Environment при добавлении устройства.
-        connections: ссылки на экземпляры объектов устройств, соединенных с текущим экземпляром
+        connections: ссылки на объекты устройств, соединенных с текущим экземпляром
     """
 
     TYPE = b"0"
     def __init__(self) -> None:
-
-        self._MAC   = Device.random_mac()
-        self._IP    = None
+        self.name               = ""
+        self._MAC               = Device.random_mac()
+        self._IP                = None
+        self._default_gateway   = None
 
         self.connections: list[Device] = []
 
@@ -32,11 +33,17 @@ class Device(ABC):
     @property
     def ip(self) -> int: return self._IP
 
+    @property
+    def default_gateway(self) -> int: return self._default_gateway
+
     @mac.setter
     def mac(self, new_mac: int) -> None: self._MAC = int(new_mac)
 
     @ip.setter
     def ip(self, new_ip: int | IPv4Address) -> None: self._IP = int(new_ip)
+
+    @default_gateway.setter
+    def default_gateway(self, new_ip: int | IPv4Address) -> None: self._default_gateway = int(new_ip)
 
     @staticmethod
     def random_mac() -> int: return int.from_bytes(os.urandom(6), byteorder="big")
@@ -53,4 +60,5 @@ class Device(ABC):
     @abstractmethod
     def receive(self, payload: bytes) -> None: ...
 
-    def __str__(self) -> str: return f"Device(type={self.TYPE}, ip={self._IP}, mac={mac_to_str(self._MAC)}, connections={self.connections})"
+    def __str__(self) -> str: return (f"Device(type={self.TYPE}, ip={ip_to_str(self._IP)}, mac={mac_to_str(self._MAC)}, "
+                                      f"default_gateway={self.default_gateway}, connections={self.connections})")

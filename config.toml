@@ -4,6 +4,7 @@
 # Traffic config
 # bandwith                = 100 # Mbps
 # ttl                     = 64 # s
+# default_port            = 1234
 
 # Router config
 # ttl                     = 300 # s

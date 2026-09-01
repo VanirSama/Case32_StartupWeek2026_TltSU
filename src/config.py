@@ -19,5 +19,6 @@ class Config(metaclass=SingletonMeta):
 
         self.BANDWIDTH              = self.cfg.get("bandwidth", 100)
         self.TTL                    = self.cfg.get("ttl", 60)
+        self.DEFAULT_PORT           = self.cfg.get("default_port", 1234)
 
         self.ROUTER_TTL             = self.cfg.get("router_ttl", 300)
