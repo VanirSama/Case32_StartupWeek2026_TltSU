@@ -1,64 +1,43 @@
 from __future__ import annotations
 
-from src.utils.utils import mac_to_str, ip_to_str
+from src.utils.utils import mac_to_bytes
 
-from abc import ABC, abstractmethod
-from ipaddress import IPv4Address
-import os
+from asyncio import Queue, create_task
+from dataclasses import dataclass
 
 
-class Device(ABC):
-    """
-    Класс-интерфейс для сетевых устройств.
+@dataclass
+class NetworkInterface:
+    ip: str
+    mac: bytes
+    link: tuple[Device, str] | None = None
 
-    Attributes:
-        TYPE: тип устройства в байтовом представлении: b"0" (дефолтное значение), b"e" (Endpoint - конечная станция), b"R" (Router - маршрутизатор).
-        _MAC: MAC-адрес устройства, случайное 48-битное число.
-        _IP: IP-адрес устройства, задается классом Environment при добавлении устройства.
-        connections: ссылки на объекты устройств, соединенных с текущим экземпляром
-    """
 
-    TYPE = b"0"
-    def __init__(self) -> None:
-        self.name               = ""
-        self._MAC               = Device.random_mac()
-        self._IP                = None
-        self._default_gateway   = None
+class Device:
+    def __init__(self, name: str):
+        self.name = name
+        self.interfaces: dict[str, NetworkInterface] = {}
+        self.inbox = Queue()
+        self.running = False
 
-        self.connections: list[Device] = []
+    def add_interface(self, iface: str, ip: str, mac: str):
+        self.interfaces[iface] = NetworkInterface(ip=ip, mac=mac_to_bytes(mac))
 
-    @property
-    def mac(self) -> int: return self._MAC
+    def connect(self, my_iface: str, other_device: Device, other_iface: str):
+        self.interfaces[my_iface].link = (other_device, other_iface)
+        other_device.interfaces[other_iface].link = (self, my_iface)
 
-    @property
-    def ip(self) -> int: return self._IP
+    async def send_frame(self, frame: bytes, out_iface: str):
+        link = self.interfaces[out_iface].link
+        if link:
+            target_dev, target_iface = link
+            await target_dev.inbox.put((target_iface, frame))
 
-    @property
-    def default_gateway(self) -> int: return self._default_gateway
+    async def run(self):
+        self.running = True
+        while self.running:
+            iface, frame = await self.inbox.get()
+            create_task(self.process_frame(iface, frame))
 
-    @mac.setter
-    def mac(self, new_mac: int) -> None: self._MAC = int(new_mac)
-
-    @ip.setter
-    def ip(self, new_ip: int | IPv4Address) -> None: self._IP = int(new_ip)
-
-    @default_gateway.setter
-    def default_gateway(self, new_ip: int | IPv4Address) -> None: self._default_gateway = int(new_ip)
-
-    @staticmethod
-    def random_mac() -> int: return int.from_bytes(os.urandom(6), byteorder="big")
-
-    def add_connection(self, device: Device) -> None:
-        if device not in self.connections:
-            self.connections.append(device)
-
-    def remove_connection(self, device: Device) -> None: self.connections.remove(device)
-
-    @abstractmethod
-    def send(self, payload: bytes) -> None: ...
-
-    @abstractmethod
-    def receive(self, payload: bytes) -> None: ...
-
-    def __str__(self) -> str: return (f"Device(type={self.TYPE}, ip={ip_to_str(self._IP)}, mac={mac_to_str(self._MAC)}, "
-                                      f"default_gateway={self.default_gateway}, connections={self.connections})")
+    async def process_frame(self, iface: str, frame: bytes):
+        raise NotImplementedError
